@@ -7,6 +7,12 @@ services:
     envVars:
       - key: PORT
         value: "10000"
+      - key: API_SERVER_ENABLED
+        value: "true"
+      - key: API_SERVER_HOST
+        value: 0.0.0.0
+      - key: API_SERVER_PORT
+        value: "8642"
       - key: HERMES_PROVIDER
         value: gemini
       - key: HERMES_MODEL

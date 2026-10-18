@@ -6,7 +6,8 @@ import urllib.request
 import urllib.error
 
 PORT = int(os.environ.get("PORT", 10000))
-DASHBOARD_URL = "http://127.0.0.1:9119"
+DASHBOARD_PORT = int(os.environ.get("API_SERVER_PORT", 8642))
+DASHBOARD_URL = f"http://127.0.0.1:{DASHBOARD_PORT}"
 
 
 class ProxyAndHealthHandler(http.server.BaseHTTPRequestHandler):
