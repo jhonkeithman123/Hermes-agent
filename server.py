@@ -8,6 +8,7 @@ import urllib.error
 PORT = int(os.environ.get("PORT", 10000))
 DASHBOARD_URL = "http://127.0.0.1:9119"
 
+
 class ProxyAndHealthHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         # Health check endpoint for Render and external cronjobs
@@ -34,12 +35,17 @@ class ProxyAndHealthHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(content)))
                 self.end_headers()
                 self.wfile.write(content)
-        except Exception:
-            # Fallback if dashboard is still initializing
-            self.send_response(200)
+        except urllib.error.HTTPError as error:
+            self.send_response(error.code)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b'{"status":"ok","message":"Hermes Agent is running"}')
+            self.wfile.write(f'{{"status":"error","message":"Dashboard returned HTTP {error.code}"}}'.encode())
+        except (urllib.error.URLError, TimeoutError) as error:
+            print(f"Dashboard unavailable for GET {self.path}: {error}", flush=True)
+            self.send_response(502)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"error","message":"Hermes dashboard is unavailable"}')
 
     def do_POST(self):
         if self.path in ("/health", "/healthz", "/ping"):
@@ -67,20 +73,27 @@ class ProxyAndHealthHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(content)))
                 self.end_headers()
                 self.wfile.write(content)
-        except Exception:
-            self.send_response(502)
+        except urllib.error.HTTPError as error:
+            self.send_response(error.code)
+            self.send_header("Content-Type", "application/json")
             self.end_headers()
+        except (urllib.error.URLError, TimeoutError) as error:
+            print(f"Dashboard unavailable for POST {self.path}: {error}", flush=True)
+            self.send_response(502)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"error","message":"Hermes dashboard is unavailable"}')
 
     def do_HEAD(self):
         self.send_response(200)
         self.end_headers()
 
-    def log_message(self, format, *args):
-        # Keep logs clean; only log health pings if needed
-        pass
-
 if __name__ == "__main__":
     print(f"Keep-alive & health server listening on 0.0.0.0:{PORT}", flush=True)
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("0.0.0.0", PORT), ProxyAndHealthHandler) as httpd:
+
+    class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    with ThreadingTCPServer(("0.0.0.0", PORT), ProxyAndHealthHandler) as httpd:
         httpd.serve_forever()
