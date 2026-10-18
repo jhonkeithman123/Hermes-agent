@@ -13,6 +13,8 @@ services:
         value: 0.0.0.0
       - key: API_SERVER_PORT
         value: "8642"
+      - key: API_SERVER_KEY
+        sync: false
       - key: HERMES_PROVIDER
         value: gemini
       - key: HERMES_MODEL

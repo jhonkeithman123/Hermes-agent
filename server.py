@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 PORT = int(os.environ.get("PORT", 10000))
 DASHBOARD_PORT = int(os.environ.get("API_SERVER_PORT", 8642))
 DASHBOARD_URL = f"http://127.0.0.1:{DASHBOARD_PORT}"
+API_SERVER_KEY = os.environ.get("API_SERVER_KEY", "")
 MODEL_CHOICES = (
         "gemini-2.5-flash",
         "gemini-2.0-flash",
@@ -85,6 +86,12 @@ DASHBOARD_HTML = """<!doctype html>
 
 
 class ProxyAndHealthHandler(http.server.BaseHTTPRequestHandler):
+    def proxy_headers(self):
+        headers = {k: v for k, v in self.headers.items() if k.lower() != "host"}
+        if "Authorization" not in headers and API_SERVER_KEY:
+            headers["Authorization"] = f"Bearer {API_SERVER_KEY}"
+        return headers
+
     def do_GET(self):
         if urlsplit(self.path).path == "/":
             content = DASHBOARD_HTML.replace("__MODEL_CHOICES__", json.dumps(MODEL_CHOICES)).encode()
@@ -108,7 +115,7 @@ class ProxyAndHealthHandler(http.server.BaseHTTPRequestHandler):
         try:
             req = urllib.request.Request(
                 target_url,
-                headers={k: v for k, v in self.headers.items() if k.lower() != "host"}
+                headers=self.proxy_headers()
             )
             with urllib.request.urlopen(req, timeout=5) as resp:
                 self.send_response(resp.status)
@@ -146,7 +153,7 @@ class ProxyAndHealthHandler(http.server.BaseHTTPRequestHandler):
             req = urllib.request.Request(
                 target_url,
                 data=post_data,
-                headers={k: v for k, v in self.headers.items() if k.lower() != "host"}
+                headers=self.proxy_headers()
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 self.send_response(resp.status)
