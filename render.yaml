@@ -6,12 +6,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: PORT
-        value: "8642"
-      - key: API_SERVER_ENABLED
-        value: "true"
-      - key: API_SERVER_HOST
-        value: 0.0.0.0
-      - key: API_SERVER_PORT
-        value: "8642"
+        value: "10000"
       - key: GOOGLE_API_KEY
         sync: false
+
